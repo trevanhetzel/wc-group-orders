@@ -157,6 +157,9 @@ class Wc_Group_Orders {
 		$this->loader->add_filter( 'post_type_link', $plugin_admin, 'group_order_permalink', 10, 3 );
 
 		$this->loader->add_filter( 'woocommerce_cart_shipping_method_full_label', $plugin_admin, 'change_cart_shipping_method_full_label', 10, 2 );
+
+		$this->loader->add_filter( 'group_order_row_actions', $plugin_admin, 'duplicate_group_order_link', 10, 2 );
+		$this->loader->add_action( 'admin_action_duplicate_group_order_as_draft', $plugin_admin, 'duplicate_group_order_as_draft' );
 	}
 
 	/**

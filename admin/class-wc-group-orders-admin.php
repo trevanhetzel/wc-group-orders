@@ -237,4 +237,96 @@ class Wc_Group_Orders_Admin {
 		return $label;
 	}
 
+	/**
+	 * Add duplicate link to group orders
+	 *
+	 * @since 	1.0.0
+	 * @access 	public
+	 */
+	public function duplicate_group_order_link( $actions, $term ) {
+		if (current_user_can('edit_posts')) {
+    	$actions['duplicate'] = '<a href="' . wp_nonce_url('admin.php?action=duplicate_group_order_as_draft&term=' . $term->term_id, basename(__FILE__), 'duplicate_nonce' ) . '" title="Duplicate this group order" rel="permalink">Duplicate</a>';
+		}
+
+		return $actions;
+	}
+
+	/**
+	 * Actually duplicate a group order
+	 *
+	 * @since 	1.0.0
+	 * @access 	public
+	 */
+	public function duplicate_group_order_as_draft( ) {
+		global $wpdb;
+
+		if (! ( isset( $_GET['term']) || isset( $_POST['term'])  || ( isset($_REQUEST['action']) && 'duplicate_group_order_as_draft' == $_REQUEST['action'] ) ) ) {
+			wp_die('No post to duplicate has been supplied!');
+		}
+
+		// Nonce verification
+		if ( !isset( $_GET['duplicate_nonce'] ) || !wp_verify_nonce( $_GET['duplicate_nonce'], basename( __FILE__ ) ) ) {
+			return;
+		}
+
+		// get the original post id
+		$term_id = (isset($_GET['term']) ? absint( $_GET['term'] ) : absint( $_POST['term'] ) );
+
+		// and all the original post data then
+		$term = get_term( $term_id );
+
+		$current_user = wp_get_current_user();
+		$new_term_author = $current_user->ID;
+
+		// if term data exists, create the term duplicate
+		if (isset( $term ) && $term != null) {
+
+			// insert the term by wp_insert_term() function
+			$new_term = wp_insert_term(
+				'Copy of ' . $term->name,
+				'group_order',
+				array(
+					'description' => $term->description,
+					'slug' => 'copy-of-' . $term->slug
+				)
+			);
+
+			if (is_wp_error( $new_term )) {
+				wp_die('Oops, you can only duplicate a group order once!');
+			} else {
+				// Copy over ACF fields
+				$pickup_location = get_field('pickup_location', $term);
+
+				if ($pickup_location) {
+					update_field('pickup_location', $pickup_location, 'group_order_'.$new_term['term_id']);
+				}
+
+				$due_date = get_field('due_date', $term);
+
+				if ($due_date) {
+					update_field('due_date', $due_date, 'group_order_'.$new_term['term_id']);
+				}
+
+				$image = get_field('image', $term);
+
+				if ($image) {
+					update_field('image', $image, 'group_order_'.$new_term['term_id']);
+				}
+
+				$hidden = get_field('hidden', $term);
+
+				if ($hidden) {
+					update_field('hidden', $hidden, 'group_order_'.$new_term['term_id']);
+				}
+
+				// finally, redirect to the edit taxonomy screen for the new draft
+				wp_redirect( admin_url( 'term.php?taxonomy=group_order&post_type=product&tag_ID=' . $new_term['term_id'] ) );
+			}
+
+			exit;
+		} else {
+			wp_die('Post creation failed, could not find original post: ' . $post_id);
+		}
+	}
+
 }
